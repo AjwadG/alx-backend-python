@@ -3,6 +3,7 @@
 2-measure_runtime.py
 '''
 
+import asyncio
 from time import perf_counter
 
 async_comprehension = __import__('1-async_comprehension').async_comprehension
@@ -10,16 +11,16 @@ async_comprehension = __import__('1-async_comprehension').async_comprehension
 
 async def measure_runtime() -> float:
     """
-    measures the runtime of the async_comprehension function.
-
-    It calls the async_comprehension function and returns
-    the time it took to run it.
+    Measures the runtime of the async_comprehension function.
 
     Returns:
-        the time it took to run the async_comprehension function.
+        The time it took to run the async_comprehension function.
     """
+    # start measuring the time
     start = perf_counter()
-    # call the async_comprehension function
-    await async_comprehension()
-    # return the time it took to run the async_comprehension function
+
+    # call the async_comprehension function four times in parallel
+    await asyncio.gather(*[async_comprehension() for _ in range(4)])
+
+    # stop measuring the time and return the runtime
     return perf_counter() - start
