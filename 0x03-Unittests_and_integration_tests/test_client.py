@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 ''' Test utils '''
 import unittest
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from requests import HTTPError
 from client import GithubOrgClient
-from parameterized import parameterized
+from parameterized import parameterized, parameterized_class
+
+from fixtures import TEST_PAYLOAD
+TEST_PAYLOAD = TEST_PAYLOAD[0]
 
 
 class TestGithubOrgClient(unittest.TestCase):
@@ -58,6 +62,51 @@ class TestGithubOrgClient(unittest.TestCase):
         ''' Test has license '''
         output = GithubOrgClient.has_license(repo, license_key)
         self.assertEqual(output, expected)
+
+
+@parameterized_class([
+    {
+        "org_payload": TEST_PAYLOAD[0],
+        "repos_payload": TEST_PAYLOAD[1],
+        "expected_repos": TEST_PAYLOAD[2],
+        "apache2_repos": TEST_PAYLOAD[3]
+    }
+])
+class TestIntegrationGithubOrgClient(unittest.TestCase):
+    ''' testIntegrationGithubOrgClient class '''
+
+    @classmethod
+    def setUpClass(cls):
+        ''' Set up class '''
+        cls.github_api_base_url = "https://api.github.com"
+        cls.org_url = "{}/orgs/google".format(cls.github_api_base_url)
+        cls.repos_url = "{}/orgs/google/repos".format(cls.github_api_base_url)
+
+        cls.github_api_responses = {
+            cls.org_url: cls.org_payload,
+            cls.repos_url: cls.repos_payload,
+        }
+
+        def mock_get_response(url):
+            ''' Mock side effect '''
+            if url in cls.github_api_responses:
+                mock_response = Mock()
+                mock_response.json.return_value = cls.github_api_responses[url]
+                return mock_response
+            return HTTPError
+
+        cls.get_patcher = patch('requests.get', side_effect=mock_get_response)
+        cls.get_patcher.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        ''' Tear down class '''
+        cls.get_patcher.stop()
+
+    def test_public_repos(self):
+        ''' Test public repos '''
+        org = GithubOrgClient("google")
+        self.assertEqual(org.public_repos(), self.expected_repos)
 
 
 if __name__ == '__main__':
