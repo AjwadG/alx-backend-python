@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ''' Test utils '''
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from client import GithubOrgClient
 from parameterized import parameterized
 
@@ -21,6 +21,24 @@ class TestGithubOrgClient(unittest.TestCase):
         mock_get_json.assert_called_once_with(
             org.ORG_URL.format(org=org_name)
         )
+
+    @patch('client.get_json')
+    def test_public_repos(self, mock_get_json):
+        ''' Test public repos '''
+        payload = [
+                {"name": "repo1"},
+                {"name": "repo2"},
+                {"name": "repo3"},
+        ]
+        mock_get_json.return_value = payload
+        with patch.object(GithubOrgClient, "_public_repos_url",
+                          new_callable=PropertyMock) as mock_public_repos_url:
+            org = GithubOrgClient("google")
+            repo = "https://api.github.com/orgs/google/repos"
+            mock_public_repos_url.return_value = repo
+            self.assertEqual(org.public_repos(), ["repo1", "repo2", "repo3"])
+            mock_public_repos_url.assert_called_once()
+            mock_get_json.assert_called_once_with(repo)
 
 
 if __name__ == '__main__':
